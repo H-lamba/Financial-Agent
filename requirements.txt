@@ -1,0 +1,26 @@
+# Core AI (Updated for Gemini)
+langchain
+langchain-community
+langchain-google-genai  #<-- This is the new one
+google-generativeai
+
+# Data Handling (Same as before)
+pandas
+numpy
+yfinance
+requests
+python-dotenv
+
+# Utilities
+matplotlib
+jupyter
+seaborn
+
+# feeding new to NLP
+transformers
+requests
+
+# Machine learning
+torch
+transformers
+numpy
