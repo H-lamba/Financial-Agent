@@ -27,6 +27,14 @@ def get_merged_data(ticker, startdate, enddate):
     stock_df = stock_df.reset_index()
     stock_df.columns = [c.lower() for c in stock_df.columns]
     stock_df["date"] = pd.to_datetime(stock_df["date"]).dt.date
+    stock_df['sma_20'] = stock_df['close'].rolling(20).mean()
+    stock_df['sma_50'] = stock_df['close'].rolling(50).mean()
+    delta = stock_df['close'].diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    rs = gain.rolling(14).mean() / loss.rolling(14).mean()
+    stock_df['rsi'] = 100 - (100 / (1 + rs))
+
     
     # Get news data
     news_list = fetch_financial_news(ticker, 30)  # Increased from 10 to 30 days
@@ -90,13 +98,26 @@ def get_merged_data(ticker, startdate, enddate):
     # ========================================================================
     
     # Merge stock data with news and sentiment
+    # Merge stock data with news and sentiment
     merged = pd.merge(stock_df, daily_news, on="date", how="left")
-    
+
     # Fill missing values (days with no news)
     merged['sentiment_score'] = merged['sentiment_score'].fillna(0.0)
+    merged['sentiment_score'] = merged['sentiment_score'].clip(-0.7, 0.7)
     
+    # --- FIX STARTS HERE ---
+    # 1. First, remove the text columns (which have NaNs)
+    merged = merged.drop(columns=['title', 'description'], errors='ignore')
+
+    # 2. THEN drop rows that still have NaNs (like the first 50 days of SMA calculation)
+    merged = merged.dropna().reset_index(drop=True)
+    # --- FIX ENDS HERE ---
+
     print(f"✅ Sentiment analysis complete!")
     print(f"   Average sentiment: {merged['sentiment_score'].mean():.3f}")
+    
+    # Sort by date just in case
+    merged = merged.sort_values("date").reset_index(drop=True)
     
     return merged
 
@@ -110,7 +131,7 @@ if __name__ == "__main__":
     ticker = "ITC.NS" 
     
     print(f"🚀 Running Analysis for {ticker}...")
-    df = get_merged_data(ticker, "2025-12-01", "2026-02-01")
+    df = get_merged_data(ticker, "2018-12-01", "2026-02-01")
     # Print columns to verify
     print("\n📋 Columns:", list(df.columns))
     
@@ -127,8 +148,8 @@ if __name__ == "__main__":
     
     # Save to CSV
     output_filename = f"{ticker}_with_sentiment.csv"
-    save_to_csv(df, output_filename)
-    
+    df.to_csv(f"data/{output_filename}", index=False)
+
     print("\n" + "=" * 70)
     print(f"✅ Test complete! Saved to data/{output_filename}")
     print("=" * 70)
