@@ -18,6 +18,7 @@ def fetch_financial_news(ticker, days=30):
     if not NEWS_API_KEY:
         print("Error with API")
         return []
+    ticker = ticker.split('.')[0]
     print(f"fetching news regarding {ticker}....")
     url = "https://newsapi.org/v2/everything"
     params = {
