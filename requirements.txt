@@ -3,6 +3,11 @@ langchain
 langchain-community
 langchain-google-genai  #<-- This is the new one
 google-generativeai
+pypdf
+huggingface
+faiss-cpu
+sentence-transformers
+
 
 # Data Handling (Same as before)
 pandas
