@@ -110,33 +110,120 @@ def train_model(ticker):
     plt.legend()
     plt.savefig(f"data/{ticker}_prediction.png")
     print(f"📊 Prediction chart saved to data/{ticker}_prediction.png")
-def predict_next_day(ticker):
+def prepare_ticker_data(ticker, start_date="2020-01-01"):
+    """
+    Fetch and prepare data for a ticker if it doesn't exist.
+    Returns True if data is ready, False if failed.
+    """
+    from process_data import get_merged_data
+    import pandas as pd
+    
+    file_path = f"data/{ticker}_with_sentiment.csv"
+    
+    if os.path.exists(file_path):
+        print(f"✅ Data already exists for {ticker}")
+        return True
+    
+    print(f"📊 Fetching data for new ticker: {ticker}...")
+    try:
+        end_date = pd.Timestamp.now().strftime('%Y-%m-%d')
+        df = get_merged_data(ticker, start_date, end_date)
+        
+        if df is None or df.empty:
+            print(f"❌ Could not fetch data for {ticker}. Check if ticker is valid.")
+            return False
+        
+        # Ensure data directory exists
+        if not os.path.exists("data"):
+            os.makedirs("data")
+            
+        df.to_csv(file_path, index=False)
+        print(f"✅ Data saved to {file_path}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error fetching data for {ticker}: {e}")
+        return False
+
+
+def predict_next_day(ticker, auto_train=True):
     """
     Predicts tomorrow's price and calculates a Confidence Interval 
     based on the model's recent accuracy (last 30 days).
+    
+    Args:
+        ticker (str): Stock ticker symbol
+        auto_train (bool): If True, automatically fetch data and train model if not found
+        
+    Returns:
+        float: Predicted price, or None if prediction failed
     """
     print(f"\n🔮 Predicting next day price for {ticker}...")
     
     file_path = f"data/{ticker}_with_sentiment.csv"
-    if not os.path.exists(file_path):
-        print("❌ Data file not found.")
-        return
-
-    # 1. Load & Scale Data
-    df = pd.read_csv(file_path)
-    data = df[['close', 'sentiment_score', 'sma_20', 'sma_50', 'rsi']].values
-    
-    scaler = joblib.load(f"models/{ticker}_scaler.pkl")
-    scaled_data = scaler.transform(data)
-    
-    model = LSTMModel()
     model_path = f"models/{ticker}_lstm.pth"
-    if not os.path.exists(model_path):
-        print(f"❌ Model not found at {model_path}")
-        return
+    scaler_path = f"models/{ticker}_scaler.pkl"
+    
+    # --- EDGE CASE 1: Data file doesn't exist ---
+    if not os.path.exists(file_path):
+        if auto_train:
+            print(f"⚠️ No data found for {ticker}. Fetching automatically...")
+            if not prepare_ticker_data(ticker):
+                return None
+        else:
+            print(f"❌ Data file not found: {file_path}")
+            return None
+    
+    # --- EDGE CASE 2: Model or scaler doesn't exist ---
+    if not os.path.exists(model_path) or not os.path.exists(scaler_path):
+        if auto_train:
+            print(f"⚠️ No trained model found for {ticker}. Training now...")
+            try:
+                train_model(ticker)
+            except Exception as e:
+                print(f"❌ Training failed: {e}")
+                return None
+        else:
+            print(f"❌ Model not found. Please train the model first.")
+            return None
+
+    # --- Load and validate data ---
+    try:
+        df = pd.read_csv(file_path)
+        required_cols = ['close', 'sentiment_score', 'sma_20', 'sma_50', 'rsi']
         
-    model.load_state_dict(torch.load(model_path))
-    model.eval()
+        # EDGE CASE 3: Missing required columns
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            print(f"❌ Data file is missing columns: {missing_cols}")
+            return None
+            
+        # EDGE CASE 4: Not enough data for prediction
+        if len(df) < SEQ_LENGTH:
+            print(f"❌ Not enough data for prediction. Need at least {SEQ_LENGTH} rows, got {len(df)}")
+            return None
+            
+        data = df[required_cols].values
+        
+    except Exception as e:
+        print(f"❌ Error reading data file: {e}")
+        return None
+    
+    # --- Load scaler and model ---
+    try:
+        scaler = joblib.load(scaler_path)
+        scaled_data = scaler.transform(data)
+    except Exception as e:
+        print(f"❌ Error loading scaler: {e}")
+        return None
+    
+    try:
+        model = LSTMModel()
+        model.load_state_dict(torch.load(model_path, weights_only=True))
+        model.eval()
+    except Exception as e:
+        print(f"❌ Error loading model: {e}")
+        return None
     
     print("   Calculating confidence interval (checking last 30 days)...")
     past_errors = []

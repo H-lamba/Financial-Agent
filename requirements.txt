@@ -20,6 +20,8 @@ python-dotenv
 matplotlib
 jupyter
 seaborn
+fastapi
+uvicorn
 
 # feeding new to NLP
 transformers
@@ -30,3 +32,4 @@ torch
 transformers
 numpy
 scikit-learn
+streamlit

@@ -1,69 +1,68 @@
 import os
 import sys
 
-# Dynamic imports to handle running as a module vs script
+# --- ROBUST IMPORT LOGIC ---
 try:
+    # 1. Try Absolute Import (Standard for 'main.py' or 'agent.py' from root)
     from src.rag.loader import load_document
     from src.rag.splitter import split_documents
     from src.rag.vectorstore import create_vector_db
     from src.rag.rag_chain import RAGChain
 except ImportError:
-    # Fallback for local testing
-    from loader import load_document
-    from splitter import split_documents
-    from vectorstore import create_vector_db
-    from rag_chain import RAGChain
+    try:
+        # 2. Try Package Import (For Streamlit/Agent when 'src' is in path)
+        from rag.loader import load_document
+        from rag.splitter import split_documents
+        from rag.vectorstore import create_vector_db
+        from rag.rag_chain import RAGChain
+    except ImportError:
+        # 3. Fallback (Running script directly inside 'rag' folder)
+        from loader import load_document
+        from splitter import split_documents
+        from vectorstore import create_vector_db
+        from rag_chain import RAGChain
 
 class DocumentTool:
     def __init__(self):
         self.chain = None
-        # Check if we already have a vector store (memory)
-        if os.path.exists("data/faiss_index"):
-            self.chain = RAGChain()
+        # Check for existing vector store
+        # We check multiple relative paths to find the data
+        possible_paths = ["data/faiss_index", "../data/faiss_index", "../../data/faiss_index"]
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                print(f"   (Found knowledge base at: {path})")
+                self.chain = RAGChain()
+                break
 
     def ingest(self, pdf_path):
-        """
-        Takes a PDF, reads it, chops it up, and saves it to the vector database.
-        """
         print(f"⚙️  Ingesting document: {pdf_path}")
         
-        # 1. Load PDF
         docs = load_document(pdf_path)
         if not docs:
-            print("❌ Failed to load document.")
             return False
         
-        # 2. Split into chunks
         chunks = split_documents(docs)
         if not chunks:
-            print("❌ Failed to split document.")
             return False
         
-        # 3. Create Vector Store (Saves to 'data/faiss_index')
         create_vector_db(chunks)
         
-        # 4. Initialize the Chain (Now that data exists)
+        # Reload chain with new data
         self.chain = RAGChain()
         return True
 
     def query(self, question):
-        """
-        Asks the RAG Chain a question.
-        """
         if not self.chain:
             return {
-                "answer": "⚠️ No document loaded. Please load a PDF first.",
+                "answer": "⚠️ No document loaded. Please upload a PDF first.",
                 "source_text": ""
             }
         
-        # Run the query through Gemini/RAG
         response = self.chain.answer_query(question)
         
-        # Format the output for the Agent
         answer = response['answer']
         source = ""
-        
-        # Safely extract source text if available
         if response.get('source_documents'):
             source = response['source_documents'][0].page_content[:200]
         
