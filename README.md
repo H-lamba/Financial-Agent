@@ -9,6 +9,7 @@ pinned: false
 license: mit
 ---
 
+<img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/0e2855d3-bdd9-482e-8031-b798b828adbb" />
 <p align="center">
   <img src="https://img.shields.io/badge/🤖_AI-Finance_Agent-blueviolet?style=for-the-badge&logo=robot&logoColor=white" alt="AI Finance Agent"/>
 </p>
