@@ -1,35 +1,33 @@
-# Core AI (Updated for Gemini)
+# Core AI / LLM
 langchain
 langchain-community
-langchain-google-genai  #<-- This is the new one
+langchain-google-genai
+langchain-huggingface
+langchain-classic
 google-generativeai
 pypdf
-huggingface
 faiss-cpu
 sentence-transformers
 
-
-# Data Handling (Same as before)
+# Data Handling
 pandas
 numpy
 yfinance
 requests
 python-dotenv
 
-# Utilities
+# Visualization
 matplotlib
-jupyter
 seaborn
+plotly
+streamlit
+
+# NLP / ML
+transformers
+torch
+scikit-learn
+joblib
+
+# Backend (optional, for FastAPI mode)
 fastapi
 uvicorn
-
-# feeding new to NLP
-transformers
-requests
-
-# Machine learning
-torch
-transformers
-numpy
-scikit-learn
-streamlit

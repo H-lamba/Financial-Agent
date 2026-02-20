@@ -1,10 +1,13 @@
-.env
 venv/
+.git/
+.gitignore
 __pycache__/
 *.pyc
 *.pyo
 notebooks/
 tests/
 data/
-.streamlit/secrets.toml
-Phase.md
+*.md
+!README.md
+.env
+!Phase.md
